@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Loopcloud Listen — Prototype</title>
+<style>
+  :root{
+    --bg:#101011;
+    --panel-bg:#161617;
+    --card-bg:#1c1c1d;
+    --card-bg-2:#222223;
+    --msg-bg:#2a2a2b;
+    --border:#2e2e30;
+    --text:#f2f2f2;
+    --text-dim:#9a9a9c;
+    --text-faint:#6a6a6c;
+    --yellow:#f5e600;
+    --yellow-dim:#7a7300;
+    --red:#e0544f;
+    --green:#5cc98a;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;color:var(--text);}
+  body{display:flex;min-height:100vh;}
+  .col{flex:1 1 50%;display:flex;flex-direction:column;min-width:0;}
+  .col-left{border-right:1px solid var(--border);}
+  .controlbar{display:flex;align-items:center;gap:10px;padding:10px 18px;background:#0a0a0b;border-bottom:1px solid var(--border);font-size:13.5px;color:var(--text-dim);}
+  .controlbar .panel-label{font-size:26px;font-weight:700;color:var(--text);margin-right:8px;}
+  .controlbar span.tag{color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;font-size:11.5px;}
+  .controlbar select{background:#1a1a1b;color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 9px;font-size:13.5px;}
+  .eventline{padding:7px 18px;background:#171712;border-bottom:1px solid var(--border);font-size:13.5px;color:var(--yellow);min-height:18px;}
+  .tabbar{display:flex;gap:4px;padding:0 14px;background:#0d0d0e;border-bottom:1px solid var(--border);overflow-x:auto;}
+  .tab{padding:10px 14px;font-size:13.5px;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+  .tab.active{color:var(--text);border-bottom-color:var(--yellow);}
+  .tab-close{color:var(--text-faint);font-size:16px;line-height:1;padding:0 2px;}
+  .tab-close:hover{color:var(--text);}
+  .surface{flex:1;padding:22px;overflow:auto;}
+  .app-header{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
+  .app-header .word{font-size:17px;font-weight:600;letter-spacing:.01em;}
+  .app-header .dot{margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--text-faint);}
+  .deco-row{display:flex;gap:10px;margin-bottom:14px;}
+  .deco-thumb{width:48px;height:48px;border-radius:8px;background:linear-gradient(var(--card-bg-2),var(--card-bg-2));background-color:var(--card-bg-2);}
+  .deco-pill{padding:7px 13px;border-radius:14px;background:var(--card-bg-2);font-size:12.5px;color:var(--text-dim);}
+  .deco-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
+  .closed-state{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-faint);font-size:14.5px;flex-direction:column;gap:8px;text-align:center;padding:40px;}
+  .closed-state .big{font-size:16.5px;color:var(--text-dim);}
+  .card{background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:18px;width:453px;position:relative;}
+  .card-status{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-faint);position:relative;margin-left:auto;white-space:nowrap;}
+  .card-status .dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex:none;}
+  .card-status.off .dot{background:var(--text-faint);}
+  .card-status.clickable{cursor:pointer;}
+  .card-title-row{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+  .card-title-row .title{font-size:15px;font-weight:600;color:var(--text);}
+  .info-i{width:16px;height:16px;border-radius:50%;border:1px solid var(--text-faint);color:var(--text-faint);font-size:10.5px;display:flex;align-items:center;justify-content:center;}
+  .mic-badge{margin-left:auto;width:30px;height:30px;border-radius:50%;background:#111;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);cursor:pointer;transition:opacity .15s;position:relative;}
+  .mic-badge svg{width:14px;height:14px;}
+  .mic-badge.active{border-color:var(--yellow-dim);}
+  .mic-badge.disabled{cursor:not-allowed;opacity:.35;}
+  .mic-badge .ping{position:absolute;inset:-4px;border-radius:50%;border:1px solid var(--yellow);opacity:0;}
+  .mic-badge.pulsing .ping{animation:ping 1.4s ease-out infinite;}
+  .hero-row{display:flex;align-items:center;gap:16px;margin:6px 0 18px;}
+  .hero-mic{width:60px;height:60px;border-radius:50%;background:#111;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);flex:none;transition:border-color .15s,color .15s;}
+  .hero-mic svg{width:26px;height:26px;}
+  .hero-mic.active{border-color:var(--yellow-dim);color:var(--yellow);cursor:pointer;}
+  .hero-mic.muted{opacity:.45;color:var(--text-faint);cursor:default;}
+  .hero-mic.warn{border-color:var(--red);color:var(--red);cursor:pointer;}
+  .hero-copy{flex:1;min-width:0;}
+  .hero-title{font-size:17px;font-weight:700;color:var(--text);margin-bottom:5px;line-height:1.25;}
+  .hero-sub{font-size:13.5px;color:var(--text-dim);line-height:1.45;}
+  @keyframes ping{0%{transform:scale(.8);opacity:.7;}100%{transform:scale(1.5);opacity:0;}}
+  .msgbox{background:var(--msg-bg);border-radius:10px;padding:14px 16px;font-size:14.5px;line-height:1.55;color:var(--text-dim);margin-bottom:14px;}
+  .msgbox b{color:var(--text);font-weight:600;}
+  .msgbox.warn{background:#2a2120;color:#e0a99f;}
+  .msgbox.warn b{color:var(--red);}
+  .msgbox .lead{color:var(--yellow);font-weight:600;display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+  .inline-icon{display:inline-flex;width:14px;height:14px;}
+  .inline-icon svg{width:14px;height:14px;display:block;}
+  .channel-tag{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;color:var(--text-faint);margin-bottom:14px;position:relative;}
+  .channel-tag .dot{width:6px;height:6px;border-radius:50%;background:var(--green);}
+  .channel-tag.off .dot{background:var(--text-faint);}
+  .channel-tag.clickable{cursor:pointer;}
+  .chevron-btn{width:22px;height:22px;border-radius:7px;background:rgba(255,255,255,.07);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;margin-left:2px;cursor:pointer;flex:none;transition:background .15s;}
+  .chevron-btn:hover{background:rgba(255,255,255,.14);border-color:var(--text-faint);}
+  .chevron-btn svg{width:12px;height:12px;color:var(--yellow);transition:transform .15s;display:block;}
+  .chevron-btn.open svg{transform:rotate(180deg);}
+  .channel-dropdown{position:absolute;top:100%;left:0;margin-top:6px;background:var(--card-bg-2);border:1px solid var(--border);border-radius:8px;padding:6px;min-width:160px;z-index:5;box-shadow:0 10px 30px rgba(0,0,0,.4);}
+  .channel-dropdown-item{padding:9px 12px;border-radius:6px;font-size:13.5px;cursor:pointer;color:var(--text-dim);display:flex;align-items:center;gap:7px;white-space:nowrap;}
+  .channel-dropdown-item:hover{background:rgba(255,255,255,.06);color:var(--text);}
+  .channel-dropdown-item .dot{width:6px;height:6px;border-radius:50%;}
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap;}
+  .btn{border:none;border-radius:18px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+  .btn-yellow{background:var(--yellow);color:#1a1700;}
+  .btn-yellow:hover{background:#fff05c;}
+  .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text);}
+  .btn-outline:hover{border-color:var(--text-faint);}
+  .btn-stop{background:var(--yellow);color:#1a1700;}
+  .btn-stop:hover{background:#fff05c;}
+  .btn-small{padding:7px 13px;font-size:12.5px;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .channel-list{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+  .channel-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--card-bg-2);border-radius:8px;font-size:12px;cursor:pointer;border:1px solid transparent;}
+  .channel-row.selected{border-color:var(--yellow-dim);}
+  .channel-row input{accent-color:var(--yellow);}
+  .small-link{font-size:13.5px;color:var(--text-faint);text-decoration:underline;cursor:pointer;background:none;border:none;padding:0;}
+  .plugin-context{display:flex;justify-content:center;align-items:flex-start;padding-top:10px;}
+  .channel-strip{width:90px;background:#0c0c0d;border-radius:8px;padding:8px 0;display:flex;flex-direction:column;align-items:center;gap:6px;margin-right:18px;border:1px solid var(--border);}
+  .channel-strip .label{font-size:11.5px;color:var(--text-faint);writing-mode:vertical-rl;text-orientation:mixed;}
+  .plugin-window{width:340px;background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:18px;}
+  .plugin-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+  .plugin-head .name{font-size:14.5px;font-weight:600;}
+  .plugin-logo{width:44px;height:44px;border-radius:50%;background:#111;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);flex:none;}
+  .plugin-logo svg{width:22px;height:22px;}
+  .status-line{font-size:13.5px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;}
+  .status-line.ok{color:var(--green);}
+  .status-line.warn{color:var(--red);}
+  .segbar{display:flex;gap:3px;margin-bottom:6px;}
+  .segbar span{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.12);transition:background .2s;}
+  .segbar span.on{background:var(--yellow);}
+  .seg-count{font-size:12.5px;color:var(--text-faint);margin-bottom:10px;}
+  .empty-slot{width:340px;border:1px dashed var(--border);border-radius:14px;padding:18px;text-align:center;color:var(--text-faint);font-size:13px;line-height:1.5;}
+  .surface{position:relative;}
+  .badge-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--yellow);margin-left:6px;}
+  .results-tag{display:inline-flex;align-items:center;gap:8px;background:var(--card-bg-2);padding:8px 13px;border-radius:14px;font-size:13.5px;color:var(--text-dim);margin-bottom:16px;}
+  .results-tag button{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:13px;line-height:1;padding:0;}
+  .results-tag button:hover{color:var(--text);}
+  .results-title{font-size:16px;font-weight:600;margin-bottom:4px;}
+  .results-sub{font-size:13px;color:var(--text-faint);margin-bottom:16px;}
+  .result-row{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:8px;}
+  .result-row:hover{background:var(--card-bg-2);}
+  .result-thumb{width:36px;height:36px;border-radius:6px;background:var(--card-bg-2);flex:none;}
+  .result-meta .t{color:var(--text);font-size:14px;}
+  .result-meta .s{color:var(--text-faint);font-size:12.5px;margin-top:2px;}
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50;}
+  .modal-backdrop.show{opacity:1;pointer-events:auto;}
+  .modal-box{background:#1c1c1d;border:1px solid var(--yellow-dim);border-radius:14px;padding:26px 32px;max-width:380px;text-align:center;color:var(--text);font-size:15.5px;line-height:1.55;box-shadow:0 20px 60px rgba(0,0,0,.55);}
+  .modal-icon{font-size:26px;margin-bottom:10px;}
+  .modal-dismiss{margin-top:14px;font-size:12.5px;color:var(--text-faint);cursor:pointer;}
+  .daw-bar{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20;display:flex;align-items:center;gap:28px;background:var(--panel-bg);border:1px solid var(--border);border-radius:24px;padding:20px 36px;box-shadow:0 12px 34px rgba(0,0,0,.5);}
+  .daw-label{font-size:26px;font-weight:700;color:var(--text-dim);letter-spacing:.06em;text-transform:uppercase;}
+  .daw-play{width:72px;height:72px;border-radius:50%;background:var(--yellow);color:#1a1700;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;transition:background .15s,color .15s,border-color .15s;}
+  .daw-play svg{width:42px;height:42px;}
+  .daw-play.playing{background:var(--card-bg-2);color:var(--yellow);border:1px solid var(--yellow-dim);}
+  .vmeter-wrap{display:flex;gap:14px;}
+  .vmeter-body{flex:1;min-width:0;}
+  .vmeter-col{display:flex;flex-direction:column;align-items:center;gap:6px;flex:none;}
+  .vmeter{flex:1;width:6.7px;border-radius:5px;background:rgba(255,255,255,.06);position:relative;overflow:hidden;}
+  .vmeter-fill{position:absolute;left:0;right:0;bottom:0;width:100%;border-radius:5px 5px 0 0;background:var(--text-faint);height:6%;opacity:.4;transition:height .07s linear,opacity .2s,background .2s;}
+  .vmeter.live .vmeter-fill{background:var(--yellow);opacity:1;}
+  .vmeter-peak{position:absolute;top:0;left:0;right:0;height:3px;border-radius:5px 5px 0 0;background:var(--red);opacity:0;transition:opacity .12s linear;}
+  .vmeter-headphones{flex:none;color:var(--text-faint);display:flex;}
+  .vmeter-headphones svg{width:14px;height:14px;display:block;}
+</style>
+</head>
+<body>
+
+  <div class="col col-left">
+    <div class="controlbar">
+      <span class="panel-label">Loopcloud 8</span>
+      <span class="tag">Simulate</span>
+      <select id="lc8Select">
+        <option value="open">LC8 app: Open</option>
+        <option value="closed">LC8 app: Closed</option>
+      </select>
+    </div>
+    <div class="eventline" id="leftEvent">&nbsp;</div>
+    <div class="surface" id="leftSurface"></div>
+  </div>
+
+  <div class="col col-right">
+    <div class="controlbar">
+      <span class="panel-label">Listen</span>
+      <span class="tag">Simulate</span>
+      <select id="listenSelect">
+        <option value="not_running">Listen: No plugin running</option>
+        <option value="idle_single">Listen: Connected — idle (1 channel)</option>
+        <option value="idle_multiple">Listen: Connected — idle (3 channels)</option>
+      </select>
+    </div>
+    <div class="eventline" id="rightEvent">&nbsp;</div>
+    <div class="surface" id="rightSurface"></div>
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop" onclick="dismissModal()">
+    <div class="modal-box" id="modalBox" onclick="event.stopPropagation()"></div>
+  </div>
+
+  <div class="daw-bar">
+    <span class="daw-label">DAW</span>
+    <button class="daw-play" id="dawPlayBtn" onclick="toggleDaw()" aria-label="Toggle DAW playback"></button>
+  </div>
+
+<script>
+const ICONS = {
+  mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="18" x2="12" y2="22"/></svg>',
+  bolt: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>',
+  loop: '<svg viewBox="0 0 40 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M10 12a6 6 0 1 0 0 .01M30 12a6 6 0 1 1 0 .01M10 12c4-7 16-7 20 0M10 12c4 7 16 7 20 0" stroke-linecap="round"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  caretDown: '<svg viewBox="0 0 256 256" fill="currentColor"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></svg>',
+  headphones: '<svg viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104.13,104.13,0,0,0,24,128v64a24,24,0,0,0,24,24H64a24,24,0,0,0,24-24V152a24,24,0,0,0-24-24H40.36A88,88,0,0,1,128,40h0a88,88,0,0,1,87.64,88H192a24,24,0,0,0-24,24v40a24,24,0,0,0,24,24h16a24,24,0,0,0,24-24V128A104.13,104.13,0,0,0,128,24Z"/></svg>',
+  play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+  wave: '<svg viewBox="0 0 240 24" preserveAspectRatio="none" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M0,12 Q7.5,2 15,12 T30,12 T45,12 T60,12 T75,12 T90,12 T105,12 T120,12 T135,12 T150,12 T165,12 T180,12 T195,12 T210,12 T225,12 T240,12"/></svg>'
+};
+
+const BTN_MIC = ICONS.mic.replace('<svg','<svg style="width:16px;height:16px;flex:none"');
+
+const CAPTURE_DURATION = 10; // seconds — placeholder capture limit, see Open Questions
+const SILENT_TIMEOUT = 4; // seconds of capture with no DAW playback before we surface the "no audio" error
+
+const state = {
+  lc8Open: true,
+  listen: 'idle_single',
+  chosenChannel: null,
+  channelDropdownOpen: false,
+  simBusy: false,
+  simPhase: null,
+  captureTrigger: null,
+  captureSecondsLeft: CAPTURE_DURATION,
+  captureTimer: null,
+  dawPlaying: false,
+  silentSeconds: 0,
+  modal: null,
+  modalTimer: null,
+  tabs: [{ id: 'home', label: 'Home' }],
+  activeTab: 'home',
+  tabCounter: 0
+};
+
+const leftEvent = document.getElementById('leftEvent');
+const rightEvent = document.getElementById('rightEvent');
+const leftSurface = document.getElementById('leftSurface');
+const rightSurface = document.getElementById('rightSurface');
+const lc8Select = document.getElementById('lc8Select');
+const listenSelect = document.getElementById('listenSelect');
+const modalBackdrop = document.getElementById('modalBackdrop');
+const modalBox = document.getElementById('modalBox');
+const dawPlayBtn = document.getElementById('dawPlayBtn');
+
+lc8Select.addEventListener('change', e => { state.lc8Open = e.target.value === 'open'; render(); });
+listenSelect.addEventListener('change', e => { state.listen = e.target.value; state.chosenChannel = null; render(); });
+
+function effectiveListen(){ return state.simBusy ? state.simPhase : state.listen; }
+
+function getChannelName(){
+  if(state.listen === 'not_running') return null;
+  if(state.listen === 'idle_multiple') return state.chosenChannel || null;
+  return state.chosenChannel || 'Master Bus';
+}
+
+function showModal(text){
+  state.modal = text;
+  render();
+  clearTimeout(state.modalTimer);
+  state.modalTimer = setTimeout(() => { state.modal = null; render(); }, 3400);
+}
+function dismissModal(){
+  clearTimeout(state.modalTimer);
+  state.modal = null;
+  render();
+}
+
+function switchTab(id){ state.activeTab = id; render(); }
+function closeTab(id){
+  state.tabs = state.tabs.filter(t => t.id !== id);
+  if(state.activeTab === id) state.activeTab = 'home';
+  render();
+}
+function openResultTab(tagLabel){
+  state.tabCounter++;
+  const id = 'tab' + state.tabCounter;
+  state.tabs.push({ id, label: '🎧 Results', tag: tagLabel });
+  state.activeTab = id;
+  render();
+}
+
+function startCapture(trigger){
+  if(state.simBusy) return;
+  state.simBusy = true;
+  state.simPhase = trigger;
+  state.captureTrigger = trigger;
+  state.captureSecondsLeft = CAPTURE_DURATION;
+  state.silentSeconds = state.dawPlaying ? 0 : 1;
+  render();
+  state.captureTimer = setInterval(() => {
+    state.captureSecondsLeft--;
+    if(state.dawPlaying){
+      state.silentSeconds = 0;
+    } else {
+      state.silentSeconds++;
+      if(state.silentSeconds >= SILENT_TIMEOUT){
+        noAudioTimeout();
+        return;
+      }
+    }
+    if(state.captureSecondsLeft <= 0){
+      clearInterval(state.captureTimer);
+      finishCapture();
+    } else {
+      render();
+    }
+  }, 1000);
+}
+
+function audioFlowing(){
+  // The meter reflects audio actually arriving from the DAW channel — independent
+  // of whether Listen has been told to capture anything.
+  return state.dawPlaying;
+}
+
+function toggleDaw(){
+  state.dawPlaying = !state.dawPlaying;
+  if(state.dawPlaying){
+    state.silentSeconds = 0;
+    // Playback resuming clears the stale "no audio" error and puts Listen back in its active state.
+    if(state.listen === 'recording_no_audio') state.listen = 'idle_single';
+  }
+  render();
+}
+
+function noAudioTimeout(){
+  clearInterval(state.captureTimer);
+  state.simBusy = false; state.simPhase = null; state.captureTrigger = null;
+  state.captureSecondsLeft = CAPTURE_DURATION;
+  state.silentSeconds = 0;
+  state.listen = 'recording_no_audio';
+  render();
+  showModal("No audio detected — make sure the DAW is playing, then try again.");
+}
+
+function finishCapture(){
+  state.simPhase = 'captured';
+  render();
+  setTimeout(() => {
+    state.simBusy = false; state.simPhase = null;
+    const tagLabel = state.captureTrigger === 'listening' ? '🎧 Matched from Listen' : '🎧 Matched from recording';
+    openResultTab(tagLabel);
+    showModal(`${tagLabel} — a new results tab just opened in Loopcloud.`);
+  }, 900);
+}
+
+function stopCapture(){
+  if(state.simBusy){
+    if(state.simPhase === 'captured') return;
+    clearInterval(state.captureTimer);
+    finishCapture();
+  } else {
+    // dropdown was set directly to a "listening/recording" preview with no live timer running
+    state.listen = 'idle_single';
+    state.captureSecondsLeft = CAPTURE_DURATION;
+    state.silentSeconds = 0;
+    render();
+  }
+}
+
+function startFlow1(){ startCapture('listening'); }
+function startFlow2(){ startCapture('recording'); }
+
+function cancelCapture(){
+  if(!state.simBusy){
+    // manual preview state, no active timer — just drop back to idle
+    state.listen = 'idle_single';
+    state.captureSecondsLeft = CAPTURE_DURATION;
+    state.silentSeconds = 0;
+    render();
+    return;
+  }
+  clearInterval(state.captureTimer);
+  state.simBusy = false; state.simPhase = null; state.captureTrigger = null;
+  state.captureSecondsLeft = CAPTURE_DURATION;
+  state.silentSeconds = 0;
+  render();
+  showModal('Capture canceled — nothing was sent to Loopcloud.');
+}
+
+function segBarHtml(secondsLeft){
+  const elapsed = CAPTURE_DURATION - secondsLeft;
+  let segs = '';
+  for(let i = 0; i < CAPTURE_DURATION; i++){
+    segs += `<span class="${i < elapsed ? 'on' : ''}"></span>`;
+  }
+  return `<div class="segbar">${segs}</div><div class="seg-count">-${secondsLeft}s</div>`;
+}
+
+function vmeterHtml(live){
+  return `<div class="vmeter-col">
+    <div class="vmeter ${live?'live':''}">
+      <div class="vmeter-peak"></div>
+      <div class="vmeter-fill"></div>
+    </div>
+    <div class="vmeter-headphones">${ICONS.headphones}</div>
+  </div>`;
+}
+
+function renderLeft(){
+  const eff = effectiveListen();
+  const channels = ['Master Bus','Vocal Chain','Drum Bus'];
+  const channelName = getChannelName();
+
+  if(!state.lc8Open){
+    leftEvent.textContent = 'Event: LC8 app closed';
+    leftSurface.innerHTML = `<div class="closed-state">
+      <div style="opacity:.5">${ICONS.loop.replace('currentColor','#6a6a6c')}</div>
+      <div class="big">Loopcloud is closed</div>
+      <div>Open the app to see the home page and the Listen widget.</div>
+    </div>`;
+    return;
+  }
+
+  const tabsHtml = `<div class="tabbar">${state.tabs.map(t => `<div class="tab ${t.id===state.activeTab?'active':''}" onclick="switchTab('${t.id}')">${t.label}${t.id!=='home'?`<span class="tab-close" onclick="event.stopPropagation();closeTab('${t.id}')">&times;</span>`:''}</div>`).join('')}</div>`;
+
+  if(state.activeTab !== 'home'){
+    const tab = state.tabs.find(t => t.id === state.activeTab);
+    leftEvent.textContent = 'Event: Viewing search results tab';
+    const fakeResults = [
+      ['Warm Analog Pad', 'C min · 122 BPM'],
+      ['Tape Drum Loop', '124 BPM'],
+      ['Sub Bass Hit', 'C min'],
+      ['Vinyl Crackle Texture', 'Loop'],
+    ];
+    leftSurface.innerHTML = `${tabsHtml}
+      <div style="padding:22px">
+      <div class="app-header">
+        <div style="color:#f5e600;display:flex">${ICONS.loop}</div>
+        <div class="word">loopcloud</div>
+        <div class="dot"></div>
+      </div>
+      <div class="results-title">Search results</div>
+      <div class="results-sub">Automatically opened after Listen sent a match.</div>
+      <div class="results-tag"><span>${tab.tag}</span><button onclick="closeTab('${tab.id}')" title="Remove tag, search normally">&times;</button></div>
+      ${fakeResults.map(r => `<div class="result-row"><div class="result-thumb"></div><div class="result-meta"><div class="t">${r[0]}</div><div class="s">${r[1]}</div></div></div>`).join('')}
+      </div>
+    `;
+    return;
+  }
+
+  let micDisabled = true, micPulsing = false;
+  let msgHtml = '', actionsHtml = '', centerIconColor = '#6a6a6c', channelTagHtml = '';
+  let heroMode = false, heroState = 'muted', heroTitle = '', heroSub = '';
+
+  if(eff === 'not_running'){
+    leftEvent.textContent = 'Event: No Listen plugin running';
+    heroMode = true; heroState = 'muted';
+    heroTitle = 'No Listen plugin yet';
+    heroSub = "Drop Listen onto a channel in your DAW and we'll start hunting for matching samples the moment you hit play.";
+  } else if(eff === 'idle_multiple' && !state.chosenChannel){
+    leftEvent.textContent = 'Event: Multiple Listen instances detected';
+    heroMode = true; heroState = 'muted';
+    heroTitle = 'Pick a channel to begin';
+    heroSub = "Listen is running on more than one channel — choose which one to match from the dropdown above.";
+    channelTagHtml = channelTagComponent(channels, null, true);
+    actionsHtml = `<div class="btnrow"><button class="btn btn-outline" disabled>${BTN_MIC}Listen</button></div>`;
+  } else if(eff === 'idle_single' || (eff === 'idle_multiple' && state.chosenChannel)){
+    leftEvent.textContent = state.chosenChannel ? `Event: Listening on ${state.chosenChannel}` : 'Event: Listen connected, idle';
+    micDisabled = false; centerIconColor = '#f5e600';
+    heroMode = true; heroState = 'active';
+    heroTitle = 'Hear it. Find it.';
+    heroSub = "Loopcloud listens to what's coming out of your DAW and finds matching samples — automatically, no searching required.";
+    channelTagHtml = channelTagComponent(channels, channelName, eff === 'idle_multiple');
+    actionsHtml = `<div class="btnrow"><button class="btn btn-yellow" onclick="startFlow1()">${BTN_MIC}Listen</button></div>`;
+  } else if(eff === 'listening' || eff === 'recording'){
+    leftEvent.textContent = 'Event: Recording in progress';
+    micPulsing = true; centerIconColor = '#f5e600';
+    channelTagHtml = `<div class="card-status"><span>Connected to Listen on <b style="color:var(--text);font-weight:600">${channelName}</b></span><span class="dot"></span></div>`;
+    msgHtml = `<div class="msgbox">Recording from <b>${channelName}</b>&hellip; it'll be matched automatically when it's done.</div>
+      ${segBarHtml(state.simBusy ? state.captureSecondsLeft : CAPTURE_DURATION)}`;
+    actionsHtml = `<div class="btnrow"><button class="btn btn-stop" onclick="stopCapture()">Use Take</button><button class="btn btn-outline btn-small" onclick="cancelCapture()">Cancel</button></div>`;
+  } else if(eff === 'captured'){
+    leftEvent.textContent = 'Event: Recording captured, opening results';
+    micDisabled = false; centerIconColor = '#f5e600';
+    channelTagHtml = `<div class="card-status"><span>Connected to Listen on <b style="color:var(--text);font-weight:600">${channelName}</b></span><span class="dot"></span></div>`;
+    msgHtml = `<div class="msgbox"><b>Captured ✓</b> — opening results&hellip;</div>`;
+    actionsHtml = `<div class="btnrow"><button class="btn btn-outline" disabled>${BTN_MIC}Listen</button></div>`;
+  } else if(eff === 'recording_no_audio'){
+    leftEvent.textContent = 'Event: Last recording captured no audio';
+    micDisabled = false; centerIconColor = '#f5e600';
+    heroMode = true; heroState = 'warn';
+    heroTitle = "Didn't catch that";
+    heroSub = "We didn't pick up any sound last time. Make sure your DAW is playing, then give it another go.";
+    channelTagHtml = `<div class="card-status"><span>Connected to Listen on <b style="color:var(--text);font-weight:600">${channelName}</b></span><span class="dot"></span></div>`;
+    actionsHtml = `<div class="btnrow"><button class="btn btn-yellow" onclick="startFlow1()">${BTN_MIC}Listen</button></div>`;
+  }
+
+  leftSurface.innerHTML = `
+    ${tabsHtml}
+    <div style="padding:22px 0 0">
+    <div class="app-header" style="padding:0 22px">
+      <div style="color:#f5e600;display:flex">${ICONS.loop}</div>
+      <div class="word">loopcloud</div>
+      <div class="dot"></div>
+    </div>
+    <div style="padding:0 22px">
+    <div class="deco-row">
+      <div class="deco-thumb"></div><div class="deco-thumb"></div><div class="deco-thumb"></div><div class="deco-thumb"></div><div class="deco-thumb"></div>
+    </div>
+    <div class="deco-pills">
+      <div class="deco-pill">House</div><div class="deco-pill">Techno</div><div class="deco-pill">Coldwave</div><div class="deco-pill">Ambient</div>
+    </div>
+    <div class="card">
+      <div class="vmeter-wrap">
+        <div class="vmeter-body">
+        ${heroMode ? `
+        <div class="card-title-row">
+          <div class="title">Listen</div>
+          <div class="info-i">i</div>
+          ${channelTagHtml}
+        </div>
+        <div class="hero-row">
+          <div class="hero-mic ${heroState}" onclick="micClick()">
+            ${ICONS.mic}
+          </div>
+          <div class="hero-copy">
+            <div class="hero-title">${heroTitle}</div>
+            <div class="hero-sub">${heroSub}</div>
+          </div>
+        </div>
+        ` : `
+        <div class="card-title-row">
+          <div class="title">Listen</div>
+          <div class="info-i">i</div>
+          <div class="mic-badge ${micDisabled?'disabled':'active'} ${micPulsing?'pulsing':''}" style="color:${centerIconColor}" onclick="micClick()">
+            ${ICONS.mic}
+            <span class="ping"></span>
+          </div>
+          ${channelTagHtml}
+        </div>
+        `}
+        ${msgHtml}
+        ${actionsHtml}
+        </div>
+        ${eff !== 'not_running' && !(eff === 'idle_multiple' && !state.chosenChannel) ? vmeterHtml(audioFlowing()) : ''}
+      </div>
+    </div>
+    </div>
+    </div>
+  `;
+}
+
+function chooseChannel(c){ state.chosenChannel = c; render(); }
+
+function channelTagComponent(channels, chosen, multiple){
+  if(!multiple){
+    return `<div class="card-status"><span>Connected to Listen on <b style="color:var(--text);font-weight:600">${chosen || 'Master Bus'}</b></span><span class="dot"></span></div>`;
+  }
+  const label = chosen ? `Connected to Listen on <b style="color:var(--text);font-weight:600">${chosen}</b>` : 'Choose a Listen channel';
+  return `<div class="card-status clickable" onclick="toggleChannelDropdown(event)">
+    <span>${label}</span><span class="dot ${chosen?'':'off'}"></span>
+    <button type="button" class="chevron-btn ${state.channelDropdownOpen?'open':''}" aria-label="Show available Listen channels">${ICONS.caretDown}</button>
+    ${state.channelDropdownOpen ? `<div class="channel-dropdown" onclick="event.stopPropagation()">${channels.map(c => `<div class="channel-dropdown-item" onclick="selectChannelFromDropdown('${c}')"><span class="dot" style="background:${c===chosen?'var(--green)':'var(--text-faint)'}"></span>${c}</div>`).join('')}</div>` : ''}
+  </div>`;
+}
+function toggleChannelDropdown(e){
+  e.stopPropagation();
+  state.channelDropdownOpen = !state.channelDropdownOpen;
+  render();
+}
+function selectChannelFromDropdown(c){
+  state.chosenChannel = c;
+  state.channelDropdownOpen = false;
+  render();
+}
+document.addEventListener('click', () => {
+  if(state.channelDropdownOpen){ state.channelDropdownOpen = false; render(); }
+});
+function micClick(){
+  const eff = effectiveListen();
+  if(state.simBusy) return;
+  if(eff === 'idle_single' || (eff === 'idle_multiple' && state.chosenChannel) || eff === 'recording_no_audio'){
+    startFlow1();
+  }
+}
+
+function renderRight(){
+  const eff = effectiveListen();
+  const channelName = getChannelName() || 'Channel 3';
+
+  if(eff === 'not_running'){
+    rightEvent.textContent = 'Event: No Listen plugin running';
+    rightSurface.innerHTML = `<div class="plugin-context">
+      <div class="channel-strip"><span class="label">Channel 3</span></div>
+      <div class="empty-slot">No plugin on this channel.<br>Add <b>Listen</b> from your DAW's plugin browser.</div>
+    </div>`;
+    return;
+  }
+
+  let statusHtml = '', bodyHtml = '';
+
+  if(!state.lc8Open){
+    rightEvent.textContent = 'Event: No LC8 app opened';
+    statusHtml = `<div class="status-line warn">Not connected to Loopcloud. Open the app to start a match.</div>`;
+    bodyHtml = `<button class="btn btn-outline" disabled>${BTN_MIC}Listen</button>`;
+  } else if(eff === 'idle_single'){
+    rightEvent.textContent = 'Event: Connected, idle';
+    statusHtml = `<div class="channel-tag" style="display:flex"><span class="dot"></span>Connected to Loopcloud</div>`;
+    bodyHtml = `<button class="btn btn-yellow" onclick="startFlow2()">${BTN_MIC}Listen</button>`;
+  } else if(eff === 'idle_multiple'){
+    rightEvent.textContent = 'Event: One of several instances, not chosen';
+    statusHtml = `<div class="status-line">Standing by &mdash; choose this channel in Loopcloud to start listening</div>`;
+    bodyHtml = `<button class="btn btn-outline" onclick="startFlow2()">${BTN_MIC}Listen</button>`;
+  } else if(eff === 'listening' || eff === 'recording'){
+    rightEvent.textContent = 'Event: Recording in progress';
+    statusHtml = `<div class="status-line ok">Recording&hellip;</div>`;
+    bodyHtml = `${segBarHtml(state.simBusy ? state.captureSecondsLeft : CAPTURE_DURATION)}
+      <div class="btnrow"><button class="btn btn-stop" onclick="stopCapture()">Use Take</button><button class="btn btn-outline btn-small" onclick="cancelCapture()">Cancel</button></div>`;
+  } else if(eff === 'captured'){
+    rightEvent.textContent = 'Event: Recording captured, sending to Loopcloud';
+    statusHtml = `<div class="status-line ok">${ICONS.check.replace('<svg','<svg style="width:11px;height:11px;vertical-align:-1px;margin-right:4px"')}Captured &mdash; sending to Loopcloud&hellip;</div>`;
+    bodyHtml = `<button class="btn btn-outline" disabled>${BTN_MIC}Listen</button>`;
+  } else if(eff === 'recording_no_audio'){
+    rightEvent.textContent = 'Event: Recording captured no audio';
+    statusHtml = `<div class="status-line warn">We didn't capture any sound. Make sure your DAW is playing, then try again.</div>`;
+    bodyHtml = `<button class="btn btn-outline" onclick="startFlow2()">${BTN_MIC}Listen</button>`;
+  }
+
+  rightSurface.innerHTML = `<div class="plugin-context">
+    <div class="channel-strip"><span class="label">${channelName}</span></div>
+    <div class="plugin-window">
+      <div class="vmeter-wrap">
+        <div class="vmeter-body">
+          <div class="plugin-head">
+            <div class="plugin-logo" style="color:#f5e600">${ICONS.mic}</div>
+            <div class="name">Loopcloud Listen</div>
+          </div>
+          ${statusHtml}
+          ${bodyHtml}
+        </div>
+        ${vmeterHtml(audioFlowing())}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderModal(){
+  if(state.modal){
+    modalBox.innerHTML = `<div class="modal-icon">🎧</div><div>${state.modal}</div><div class="modal-dismiss" onclick="dismissModal()">Dismiss</div>`;
+    modalBackdrop.classList.add('show');
+  } else {
+    modalBackdrop.classList.remove('show');
+  }
+}
+
+// Drives the vertical meters with fast, irregular levels so incoming audio
+// reads as real signal rather than a smooth, predictable pulse.
+let lastVmeterLevel = 20;
+const PEAK_THRESHOLD = 94; // level (%) at which the clip/peak bar lights up
+
+function tickVmeters(){
+  const meters = document.querySelectorAll('.vmeter.live');
+  if(!meters.length) return;
+  meters.forEach(meterEl => {
+    // Mostly jitter near the last level, with occasional sharp transient spikes/dips —
+    // closer to how a real signal meter jumps around than a steady sine wave.
+    const spike = Math.random();
+    let level;
+    if(spike > 0.85){
+      level = 55 + Math.random() * 45; // transient hit, can reach/clip the top
+    } else if(spike < 0.12){
+      level = Math.random() * 12; // brief near-silence
+    } else {
+      level = lastVmeterLevel + (Math.random() - 0.5) * 50;
+    }
+    level = Math.max(4, Math.min(100, level));
+    lastVmeterLevel = level;
+    const fill = meterEl.querySelector('.vmeter-fill');
+    const peak = meterEl.querySelector('.vmeter-peak');
+    if(fill) fill.style.height = level + '%';
+    if(peak) peak.style.opacity = level >= PEAK_THRESHOLD ? '1' : '0';
+  });
+}
+setInterval(tickVmeters, 1000 / (12 + Math.random() * 6));
+
+function renderDaw(){
+  dawPlayBtn.innerHTML = state.dawPlaying ? ICONS.pause : ICONS.play;
+  dawPlayBtn.classList.toggle('playing', state.dawPlaying);
+}
+
+function render(){
+  lc8Select.value = state.lc8Open ? 'open' : 'closed';
+  listenSelect.value = state.listen;
+  renderLeft();
+  renderRight();
+  renderModal();
+  renderDaw();
+}
+
+render();
+</script>
+</body>
+</html>
